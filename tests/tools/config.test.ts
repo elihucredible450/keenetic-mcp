@@ -30,22 +30,26 @@ const CONFIG = configText(STALE_CHECKSUM);
 function harness(opts: { unsavedAfter?: boolean; readOnly?: boolean } = {}) {
   const posts: unknown[] = [];
   let savedChecksum = STALE_CHECKSUM;
+  let lastChangedAt = 'Fri, 7 Aug 2026 01:20:36 GMT';
+
+  const get = vi.fn(async () => ({
+    date: lastChangedAt,
+    user: 'admin',
+    checksum: RUNNING_CHECKSUM,
+    'fail-safe': { unsaved: false, rollback: false, 'time-left': 0 }
+  }));
+  const getText = vi.fn(async () => configText(savedChecksum));
+  const post = vi.fn(async (body: unknown) => {
+    posts.push(body);
+    // The router records the save either way; whether flash caught up is what
+    // separates a real save from one that never landed.
+    lastChangedAt = 'Fri, 7 Aug 2026 01:20:40 GMT';
+    if (opts.unsavedAfter !== true) savedChecksum = RUNNING_CHECKSUM;
+    return {};
+  });
 
   const client = {
-    rci: {
-      get: vi.fn(async () => ({
-        date: 'Fri, 7 Aug 2026 01:20:36 GMT',
-        user: 'admin',
-        checksum: RUNNING_CHECKSUM,
-        'fail-safe': { unsaved: false, rollback: false, 'time-left': 0 }
-      })),
-      post: vi.fn(async (body: unknown) => {
-        posts.push(body);
-        if (opts.unsavedAfter !== true) savedChecksum = RUNNING_CHECKSUM;
-        return {};
-      }),
-      getText: vi.fn(async () => configText(savedChecksum))
-    },
+    rci: { get, post, getText },
     capabilities: vi.fn()
   } as unknown as KeeneticClient;
 
@@ -67,7 +71,7 @@ function harness(opts: { unsavedAfter?: boolean; readOnly?: boolean } = {}) {
   }) as never);
 
   registerConfigTools(server, ctx);
-  return { handlers, posts };
+  return { handlers, posts, get, getText };
 }
 
 function payload(result: ToolResult): any {
@@ -87,6 +91,21 @@ describe('save_config', () => {
     const result = await handlers['save_config']!({});
     expect(result.isError).toBe(true);
     expect(result.content.map(p => p.text).join('')).toMatch(/still reports unsaved/i);
+  }, 10_000);
+
+  // The startup config is ~17 KB. Polling the confirmation rather than the
+  // cheap endpoint turned one save into roughly 100 KB of traffic.
+  it('reads the startup config once, however many times it polls', async () => {
+    const { handlers, get, getText } = harness();
+    await handlers['save_config']!({});
+    expect(getText).toHaveBeenCalledTimes(1);
+    expect(get.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('reads it once on the failing path too', async () => {
+    const { handlers, getText } = harness({ unsavedAfter: true });
+    await handlers['save_config']!({});
+    expect(getText).toHaveBeenCalledTimes(1);
   }, 10_000);
 
   it('is not registered in read-only mode', () => {

@@ -2,6 +2,7 @@
 import { pathToFileURL } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { runInitFromTerminal } from './cli/init.js';
 import { configDir, readStoredConfig } from './config/discover.js';
 import { loadConfig, type StoredCredentials } from './config/load.js';
 import { createSecretStore, spawnRunner } from './config/secrets.js';
@@ -27,6 +28,12 @@ export function createServer(ctx: ToolContext): McpServer {
 }
 
 async function main(): Promise<void> {
+  // `init` is a subcommand rather than a second binary, so the published
+  // surface stays a single command.
+  if (process.argv[2] === 'init') {
+    process.exit(await runInitFromTerminal());
+  }
+
   const dir = configDir(process.platform, process.env);
   const storedConfig = await readStoredConfig(dir);
   const store = createSecretStore(process.platform, spawnRunner, dir);

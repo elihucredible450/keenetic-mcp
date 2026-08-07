@@ -10,6 +10,7 @@ import { stubBackup } from './helpers/backup.js';
 // so it stays available even when writing is disabled.
 const READ_TOOLS = [
   'backup_config',
+  'rci_call',
   'get_config_state',
   'get_device',
   'get_interface',

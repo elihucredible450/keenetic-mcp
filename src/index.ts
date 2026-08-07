@@ -9,6 +9,7 @@ import { registerConfigTools } from './tools/config.js';
 import { registerDeviceTools } from './tools/devices.js';
 import { registerInterfaceTools } from './tools/interfaces.js';
 import { registerNetworkTools } from './tools/network.js';
+import { registerRawTool } from './tools/raw.js';
 import type { ToolContext } from './tools/registry.js';
 import { registerSystemTools } from './tools/system.js';
 
@@ -19,6 +20,7 @@ export function createServer(ctx: ToolContext): McpServer {
   registerInterfaceTools(server, ctx);
   registerNetworkTools(server, ctx);
   registerConfigTools(server, ctx);
+  registerRawTool(server, ctx);
   return server;
 }
 

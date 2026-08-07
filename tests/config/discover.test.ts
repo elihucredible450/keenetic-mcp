@@ -51,7 +51,7 @@ describe('parseGateway', () => {
   // The macOS parser must key on the gateway line, not on the first address in
   // the output, or it would return the destination instead.
   it('does not confuse the destination for the gateway', () => {
-    const output = 'destination: 10.0.0.0\n    gateway: 192.168.1.1\n';
+    const output = 'destination: 198.51.100.0\n    gateway: 192.168.1.1\n';
     expect(parseGateway('darwin', output)).toBe('192.168.1.1');
   });
 });

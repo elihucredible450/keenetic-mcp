@@ -2,7 +2,9 @@
 import { pathToFileURL } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { loadConfig } from './config/load.js';
+import { configDir, readStoredConfig } from './config/discover.js';
+import { loadConfig, type StoredCredentials } from './config/load.js';
+import { createSecretStore, spawnRunner } from './config/secrets.js';
 import { createBackupGuard } from './router/backup.js';
 import { createClient } from './router/client.js';
 import { registerConfigTools } from './tools/config.js';
@@ -25,7 +27,21 @@ export function createServer(ctx: ToolContext): McpServer {
 }
 
 async function main(): Promise<void> {
-  const config = loadConfig(process.argv.slice(2), process.env);
+  const dir = configDir(process.platform, process.env);
+  const storedConfig = await readStoredConfig(dir);
+  const store = createSecretStore(process.platform, spawnRunner, dir);
+
+  // Assigned conditionally: exactOptionalPropertyTypes rejects an explicit
+  // undefined for an optional property.
+  const stored: StoredCredentials = {};
+  if (storedConfig) {
+    stored.host = storedConfig.host;
+    stored.login = storedConfig.login;
+    const secret = await store.read(`${storedConfig.login}@${storedConfig.host}`);
+    if (secret !== null) stored.password = secret;
+  }
+
+  const config = await loadConfig(process.argv.slice(2), process.env, stored);
   const client = createClient({
     host: config.host,
     login: config.login,

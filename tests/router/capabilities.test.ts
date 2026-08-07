@@ -46,8 +46,8 @@ describe('client capability caching', () => {
 });
 
 describe('loadConfig', () => {
-  it('reads host, login and password from the environment', () => {
-    const cfg = loadConfig([], {
+  it('reads host, login and password from the environment', async () => {
+    const cfg = await loadConfig([], {
       KEENETIC_HOST: '192.0.2.1',
       KEENETIC_USER: 'root',
       KEENETIC_PASSWORD: 'secret'
@@ -55,8 +55,8 @@ describe('loadConfig', () => {
     expect(cfg).toMatchObject({ host: '192.0.2.1', login: 'root', password: 'secret' });
   });
 
-  it('defaults the login to admin and read-only to false', () => {
-    const cfg = loadConfig([], {
+  it('defaults the login to admin and read-only to false', async () => {
+    const cfg = await loadConfig([], {
       KEENETIC_HOST: '192.0.2.1',
       KEENETIC_PASSWORD: 'secret'
     } as NodeJS.ProcessEnv);
@@ -65,8 +65,8 @@ describe('loadConfig', () => {
     expect(cfg.maxResponseBytes).toBe(25_000);
   });
 
-  it('honours --read-only and --max-response-bytes', () => {
-    const cfg = loadConfig(['--read-only', '--max-response-bytes', '4096'], {
+  it('honours --read-only and --max-response-bytes', async () => {
+    const cfg = await loadConfig(['--read-only', '--max-response-bytes', '4096'], {
       KEENETIC_HOST: '192.0.2.1',
       KEENETIC_PASSWORD: 'secret'
     } as NodeJS.ProcessEnv);
@@ -74,9 +74,9 @@ describe('loadConfig', () => {
     expect(cfg.maxResponseBytes).toBe(4096);
   });
 
-  it('names the missing variable when the password is absent', () => {
-    expect(() => loadConfig([], { KEENETIC_HOST: '192.0.2.1' } as NodeJS.ProcessEnv)).toThrow(
-      /KEENETIC_PASSWORD/
-    );
+  it('points at the wizard when the password is absent', async () => {
+    await expect(
+      loadConfig([], { KEENETIC_HOST: '192.0.2.1' } as NodeJS.ProcessEnv)
+    ).rejects.toThrow(/keenetic-mcp init/);
   });
 });

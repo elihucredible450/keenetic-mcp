@@ -55,6 +55,43 @@ describe('rci_call', () => {
     expect(post).toHaveBeenCalledWith({ show: { version: {} } });
   });
 
+  it('posts an array body unchanged, for a batch', async () => {
+    const { handlers, post } = harness();
+    await handlers['rci_call']!({ method: 'POST', body: [{ parse: 'show version' }] });
+    expect(post).toHaveBeenCalledWith([{ parse: 'show version' }]);
+  });
+
+  // A client with no `type` to go on may serialise the body to a string. Sent
+  // on as-is it reached the router double-encoded, matched no command and came
+  // back as `{}` - indistinguishable from success.
+  it('decodes a body that arrived as a JSON string', async () => {
+    const { handlers, post } = harness();
+    await handlers['rci_call']!({ method: 'POST', body: '{"show":{"version":{}}}' });
+    expect(post).toHaveBeenCalledWith({ show: { version: {} } });
+  });
+
+  it('decodes a stringified array body', async () => {
+    const { handlers, post } = harness();
+    await handlers['rci_call']!({ method: 'POST', body: '[{"parse":"show version"}]' });
+    expect(post).toHaveBeenCalledWith([{ parse: 'show version' }]);
+  });
+
+  it('refuses a string body that is not JSON, instead of sending it', async () => {
+    const { handlers, post } = harness();
+    const result = await handlers['rci_call']!({ method: 'POST', body: 'show version' });
+    expect(result.isError).toBe(true);
+    expect(text(result)).toMatch(/not JSON/i);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('refuses a body that decodes to a scalar', async () => {
+    const { handlers, post } = harness();
+    const result = await handlers['rci_call']!({ method: 'POST', body: '42' });
+    expect(result.isError).toBe(true);
+    expect(text(result)).toMatch(/not a command tree/i);
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it('refuses POST in read-only mode', async () => {
     const { handlers, post } = harness(true);
     const result = await handlers['rci_call']!({ method: 'POST', body: {} });

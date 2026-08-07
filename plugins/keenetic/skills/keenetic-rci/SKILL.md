@@ -37,6 +37,27 @@ appears as `host <mac> policy Policy0`, which maps to
 `{"ip":{"hotspot":{"host":{"mac":"...","policy":"Policy0"}}}}`. Guessing field
 names instead produces silent no-ops, described below.
 
+## Deleting something: `no` goes beside the arguments
+
+The negation is not a wrapper key. The router shows an already-negated line as
+`"no": true` sitting next to that line's arguments, and a delete is written the
+same way round. The object's own name travels in `name`:
+
+```json
+{"ip": {"policy": {"no": true, "name": "Policy1"}}}
+{"interface": {"no": true, "name": "Wireguard1"}}
+{"ip": {"name-server": {"no": true, "address": "1.1.1.1", "domain": "", "interface": "Wireguard1"}}}
+```
+
+A successful delete answers with a `status` block that names what went, for
+example `removed policy "Policy1".` or `interface "Wireguard1" removed.`. No
+such block means nothing happened, whatever the HTTP code said.
+
+References clean up on their own: removing `Wireguard1` also dropped the
+`no permit global Wireguard1` line that `Policy0` still carried.
+
+Confirmed on KeeneticOS 5.1.1.
+
 ## Three traps
 
 **A wrong field name looks exactly like success.** Send a field into a branch

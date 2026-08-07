@@ -1,30 +1,39 @@
 import { writeFile } from 'node:fs/promises';
 import type { McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
+import {
+  lastChangeMoved,
+  readConfigState,
+  readLastChange,
+  STARTUP_CONFIG,
+  type LastChange
+} from '../router/config-state.js';
 import { fail, guard, ok, READ_ONLY, type ToolContext, type ToolResult } from './registry.js';
-
-const STARTUP_CONFIG = '/ci/startup-config.txt';
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
-}
-
-async function unsavedChanges(ctx: ToolContext): Promise<boolean> {
-  const raw = asRecord(await ctx.client.rci.get('show/last-change'));
-  return asRecord(raw['fail-safe'])['unsaved'] === true;
-}
 
 /**
  * The router answers the save command with "saving (http/rci)." in the present
  * tense, so the write may still be in flight. A single immediate check would
  * report a false failure; this polls briefly instead.
+ *
+ * The loop watches show/last-change, which is a small JSON document. The
+ * confirmation reads startup-config.txt at about 17 KB, so it runs once at the
+ * end rather than on every attempt.
+ *
+ * Only an explicit `false` counts as saved. An unknown saved state resolves to
+ * "not confirmed", so a failed read sends the caller to look rather than
+ * telling them the save landed.
  */
-async function waitForSaved(ctx: ToolContext, attempts = 5, delayMs = 400): Promise<boolean> {
+async function waitForSaved(
+  ctx: ToolContext,
+  before: LastChange,
+  attempts = 5,
+  delayMs = 400
+): Promise<boolean> {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    if (!(await unsavedChanges(ctx))) return true;
+    if (lastChangeMoved(before, await readLastChange(ctx.client.rci))) break;
     await new Promise(resolve => setTimeout(resolve, delayMs));
   }
-  return !(await unsavedChanges(ctx));
+  return (await readConfigState(ctx.client.rci)).unsavedChanges === false;
 }
 
 export function registerConfigTools(server: McpServer, ctx: ToolContext): void {
@@ -71,8 +80,10 @@ export function registerConfigTools(server: McpServer, ctx: ToolContext): void {
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
     },
     guard(async (): Promise<ToolResult> => {
+      // Taken before the command so the poll can tell the router has acted.
+      const before = await readLastChange(ctx.client.rci);
       await ctx.client.rci.post({ system: { configuration: { save: {} } } });
-      if (!(await waitForSaved(ctx))) {
+      if (!(await waitForSaved(ctx, before))) {
         return fail(
           new Error(
             'The save command was accepted but the router still reports unsaved changes. ' +

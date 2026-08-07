@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, posix, win32 } from 'node:path';
+import { STARTUP_CONFIG } from './config-state.js';
 import type { Rci } from './rci.js';
 
 export interface BackupResult {
@@ -40,7 +41,7 @@ export function createBackupGuard(rci: Rci, host: string, now: () => Date): Back
   async function take(): Promise<BackupResult> {
     // startup-config, not running-config: the point is to capture the state a
     // reboot would return to.
-    const text = await rci.getText('/ci/startup-config.txt');
+    const text = await rci.getText(STARTUP_CONFIG);
     const dir = join(stateDir(process.platform, process.env), 'backups');
     await mkdir(dir, { recursive: true });
 

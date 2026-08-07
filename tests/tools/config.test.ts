@@ -10,28 +10,46 @@ import { stubBackup } from '../helpers/backup.js';
 
 type Handler = (args: Record<string, unknown>) => Promise<ToolResult>;
 
-const CONFIG = '! $$$ Model: Keenetic Model\nip hotspot\n';
+const RUNNING_CHECKSUM = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+const STALE_CHECKSUM = '0f9e8d7c6b5a49382716f5e4d3c2b1a0';
 
-/** `unsavedAfter` models a save that never completes. */
+/** Startup config as the router serves it: the saved checksum is in the header. */
+const configText = (checksum: string) =>
+  `! $$$ Md5 checksum: ${checksum}\n! $$$ Model: Keenetic Model\nip hotspot\n`;
+
+const CONFIG = configText(STALE_CHECKSUM);
+
+/**
+ * `unsavedAfter` models a save that never completes: the command is accepted
+ * but the checksum in flash never catches up with the running one.
+ *
+ * `fail-safe.unsaved` is deliberately pinned to false throughout, because that
+ * is what a real 5.1.1 router reports even while a change sits unsaved. A save
+ * check that believes that flag passes this harness while doing nothing.
+ */
 function harness(opts: { unsavedAfter?: boolean; readOnly?: boolean } = {}) {
   const posts: unknown[] = [];
-  let unsaved = false;
+  let savedChecksum = STALE_CHECKSUM;
+  let lastChangedAt = 'Fri, 7 Aug 2026 01:20:36 GMT';
+
+  const get = vi.fn(async () => ({
+    date: lastChangedAt,
+    user: 'admin',
+    checksum: RUNNING_CHECKSUM,
+    'fail-safe': { unsaved: false, rollback: false, 'time-left': 0 }
+  }));
+  const getText = vi.fn(async () => configText(savedChecksum));
+  const post = vi.fn(async (body: unknown) => {
+    posts.push(body);
+    // The router records the save either way; whether flash caught up is what
+    // separates a real save from one that never landed.
+    lastChangedAt = 'Fri, 7 Aug 2026 01:20:40 GMT';
+    if (opts.unsavedAfter !== true) savedChecksum = RUNNING_CHECKSUM;
+    return {};
+  });
 
   const client = {
-    rci: {
-      get: vi.fn(async () => ({
-        date: 'Fri, 7 Aug 2026 01:20:36 GMT',
-        user: 'admin',
-        checksum: 'aa4b',
-        'fail-safe': { unsaved, rollback: false, 'time-left': 0 }
-      })),
-      post: vi.fn(async (body: unknown) => {
-        posts.push(body);
-        unsaved = opts.unsavedAfter === true;
-        return {};
-      }),
-      getText: vi.fn(async () => CONFIG)
-    },
+    rci: { get, post, getText },
     capabilities: vi.fn()
   } as unknown as KeeneticClient;
 
@@ -53,7 +71,7 @@ function harness(opts: { unsavedAfter?: boolean; readOnly?: boolean } = {}) {
   }) as never);
 
   registerConfigTools(server, ctx);
-  return { handlers, posts };
+  return { handlers, posts, get, getText };
 }
 
 function payload(result: ToolResult): any {
@@ -73,6 +91,21 @@ describe('save_config', () => {
     const result = await handlers['save_config']!({});
     expect(result.isError).toBe(true);
     expect(result.content.map(p => p.text).join('')).toMatch(/still reports unsaved/i);
+  }, 10_000);
+
+  // The startup config is ~17 KB. Polling the confirmation rather than the
+  // cheap endpoint turned one save into roughly 100 KB of traffic.
+  it('reads the startup config once, however many times it polls', async () => {
+    const { handlers, get, getText } = harness();
+    await handlers['save_config']!({});
+    expect(getText).toHaveBeenCalledTimes(1);
+    expect(get.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('reads it once on the failing path too', async () => {
+    const { handlers, getText } = harness({ unsavedAfter: true });
+    await handlers['save_config']!({});
+    expect(getText).toHaveBeenCalledTimes(1);
   }, 10_000);
 
   it('is not registered in read-only mode', () => {

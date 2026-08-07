@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import * as z from 'zod/v4';
+import { readConfigState } from '../router/config-state.js';
 import { guard, ok, READ_ONLY, type ToolContext } from './registry.js';
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -48,24 +48,12 @@ export function registerSystemTools(server: McpServer, ctx: ToolContext): void {
       title: 'Configuration state',
       description:
         'Whether the running configuration has unsaved changes, who last changed it and when, ' +
-        'and the state of the router fail-safe timer. Unsaved changes are lost on reboot.',
+        'and the state of the router fail-safe timer. Unsaved changes are lost on reboot. ' +
+        'unsavedChanges is null when the saved checksum could not be read - treat that as ' +
+        'unknown, not as saved.',
       inputSchema: {},
       annotations: READ_ONLY
     },
-    guard(async () => {
-      const raw = asRecord(await ctx.client.rci.get('show/last-change'));
-      const failSafe = asRecord(raw['fail-safe']);
-      return ok({
-        lastChangedAt: raw['date'] ?? null,
-        lastChangedBy: raw['user'] ?? null,
-        lastChangedVia: raw['agent'] ?? null,
-        savedChecksum: raw['checksum'] ?? null,
-        unsavedChanges: failSafe['unsaved'] === true,
-        failSafe: {
-          rollbackPending: failSafe['rollback'] === true,
-          secondsLeft: failSafe['time-left'] ?? 0
-        }
-      });
-    })
+    guard(async () => ok(await readConfigState(ctx.client.rci)))
   );
 }

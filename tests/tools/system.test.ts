@@ -20,9 +20,12 @@ const CAPS = {
   features: new Set(['hwnat'])
 };
 
-function contextWith(get: (path: string) => Promise<unknown>): ToolContext {
+function contextWith(
+  get: (path: string) => Promise<unknown>,
+  getText: (path: string) => Promise<string> = async () => ''
+): ToolContext {
   const client = {
-    rci: { get, post: vi.fn(), getText: vi.fn() },
+    rci: { get, post: vi.fn(), getText },
     capabilities: async () => CAPS
   } as unknown as KeeneticClient;
   return { client, maxResponseBytes: 25_000, readOnly: false, backup: stubBackup() };
@@ -113,20 +116,60 @@ describe('get_system_info', () => {
 });
 
 describe('get_config_state', () => {
-  it('surfaces the unsaved flag and fail-safe state', async () => {
-    const { handlers } = capture(
-      contextWith(async () => ({
-        date: 'Thu, 6 Aug 2026 10:46:01 GMT',
-        agent: 'http/rci',
-        user: 'admin',
-        checksum: 'aa4b',
-        'fail-safe': { unsaved: true, rollback: false, 'time-left': 0 }
-      }))
-    );
+  const RUNNING = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+  const STALE = '0f9e8d7c6b5a49382716f5e4d3c2b1a0';
+
+  /**
+   * `fail-safe.unsaved` is false in every case here on purpose. A real 5.1.1
+   * router reports it that way even with a change pending, so any answer that
+   * comes from that flag rather than from the checksums is wrong.
+   */
+  const lastChange = async () => ({
+    date: 'Thu, 6 Aug 2026 10:46:01 GMT',
+    agent: 'http/rci',
+    user: 'admin',
+    checksum: RUNNING,
+    'fail-safe': { unsaved: false, rollback: false, 'time-left': 0 }
+  });
+
+  const startupWith = (checksum: string) => async () =>
+    `! $$$ Md5 checksum: ${checksum}\nip hotspot\n`;
+
+  it('reports unsaved changes when flash still holds an older checksum', async () => {
+    const { handlers } = capture(contextWith(lastChange, startupWith(STALE)));
 
     const payload = JSON.parse(textOf(await handlers['get_config_state']!({})));
     expect(payload.unsavedChanges).toBe(true);
+    expect(payload.runningChecksum).toBe(RUNNING);
+    expect(payload.savedChecksum).toBe(STALE);
     expect(payload.lastChangedBy).toBe('admin');
     expect(payload.failSafe.rollbackPending).toBe(false);
+  });
+
+  it('reports saved once the checksums agree', async () => {
+    const { handlers } = capture(contextWith(lastChange, startupWith(RUNNING)));
+
+    const payload = JSON.parse(textOf(await handlers['get_config_state']!({})));
+    expect(payload.unsavedChanges).toBe(false);
+  });
+
+  it('surfaces the fail-safe flag separately from the saved state', async () => {
+    const { handlers } = capture(contextWith(lastChange, startupWith(STALE)));
+
+    const payload = JSON.parse(textOf(await handlers['get_config_state']!({})));
+    expect(payload.failSafe.unsaved).toBe(false);
+    expect(payload.unsavedChanges).toBe(true);
+  });
+
+  it('answers unknown rather than saved when the startup config cannot be read', async () => {
+    const { handlers } = capture(
+      contextWith(lastChange, async () => {
+        throw new Error('404');
+      })
+    );
+
+    const payload = JSON.parse(textOf(await handlers['get_config_state']!({})));
+    expect(payload.unsavedChanges).toBeNull();
+    expect(payload.savedChecksum).toBeNull();
   });
 });

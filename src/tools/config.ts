@@ -1,30 +1,26 @@
 import { writeFile } from 'node:fs/promises';
 import type { McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
+import { readConfigState } from '../router/config-state.js';
 import { fail, guard, ok, READ_ONLY, type ToolContext, type ToolResult } from './registry.js';
 
 const STARTUP_CONFIG = '/ci/startup-config.txt';
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
-}
-
-async function unsavedChanges(ctx: ToolContext): Promise<boolean> {
-  const raw = asRecord(await ctx.client.rci.get('show/last-change'));
-  return asRecord(raw['fail-safe'])['unsaved'] === true;
-}
 
 /**
  * The router answers the save command with "saving (http/rci)." in the present
  * tense, so the write may still be in flight. A single immediate check would
  * report a false failure; this polls briefly instead.
+ *
+ * Only an explicit `false` counts as saved. An unknown saved state resolves to
+ * "not confirmed", so a failed read sends the caller to look rather than
+ * telling them the save landed.
  */
 async function waitForSaved(ctx: ToolContext, attempts = 5, delayMs = 400): Promise<boolean> {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    if (!(await unsavedChanges(ctx))) return true;
+    if ((await readConfigState(ctx.client.rci)).unsavedChanges === false) return true;
     await new Promise(resolve => setTimeout(resolve, delayMs));
   }
-  return !(await unsavedChanges(ctx));
+  return (await readConfigState(ctx.client.rci)).unsavedChanges === false;
 }
 
 export function registerConfigTools(server: McpServer, ctx: ToolContext): void {

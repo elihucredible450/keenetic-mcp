@@ -24,7 +24,7 @@ const PATHS = [
 const OUT_DIR = new URL('../tests/fixtures/', import.meta.url);
 
 async function main(): Promise<void> {
-  const config = loadConfig(process.argv.slice(2), process.env);
+  const config = await loadConfig(process.argv.slice(2), process.env);
   const client = createClient({
     host: config.host,
     login: config.login,

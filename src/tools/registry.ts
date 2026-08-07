@@ -1,6 +1,7 @@
 import { KeeneticError } from '../router/errors.js';
 import type { BackupGuard } from '../router/backup.js';
 import type { KeeneticClient } from '../router/client.js';
+import { capText } from '../shape/budget.js';
 
 export interface ToolContext {
   client: KeeneticClient;
@@ -21,8 +22,12 @@ export interface ToolResult {
   isError?: true;
 }
 
-export function ok(payload: unknown): ToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
+/** `maxBytes` caps the serialised payload; omit it for responses already shaped. */
+export function ok(payload: unknown, maxBytes?: number): ToolResult {
+  const text = JSON.stringify(payload, null, 2);
+  return {
+    content: [{ type: 'text', text: maxBytes === undefined ? text : capText(text, maxBytes) }]
+  };
 }
 
 /**

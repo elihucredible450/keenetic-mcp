@@ -64,8 +64,15 @@ npx -y keenetic-mcp init
 ### Codex
 
 ```
-codex mcp add keenetic -- npx -y keenetic-mcp
+codex plugin marketplace add salatmaster/keenetic-mcp
+codex plugin add keenetic@keenetic
 npx -y keenetic-mcp init
+```
+
+This brings the skills along with the server. For the server on its own:
+
+```
+codex mcp add keenetic -- npx -y keenetic-mcp
 ```
 
 ### Anything else
@@ -119,8 +126,9 @@ Prefer environment variables? `KEENETIC_HOST`, `KEENETIC_USER` and
 
 ## Skills included
 
-The Claude Code plugin ships three skills, so the agent knows how your router
-behaves rather than guessing:
+The plugin ships three skills, so the agent knows how your router behaves rather
+than guessing. One plugin directory serves both Claude Code and Codex: they read
+different manifests but share the same skills and the same server definition.
 
 - **keenetic-rci** teaches the router's API tree: which paths exist, which ones
   return 100 KB, and how to recover the exact syntax of a command from the

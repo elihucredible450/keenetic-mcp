@@ -2,7 +2,10 @@
   "mcpServers": {
     "keenetic": {
       "command": "npx",
-      "args": ["-y", "keenetic-mcp@^0.1"]
+      "args": [
+        "-y",
+        "keenetic-mcp@^0.2"
+      ]
     }
   }
 }

@@ -2,6 +2,50 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
 import { fail, guard, ok, type ToolContext, type ToolResult } from './registry.js';
 
+type RawBody = string | Record<string, unknown> | unknown[];
+
+type Decoded = { ok: true; body: unknown } | { ok: false; message: string };
+
+/**
+ * Accepts a body that arrived as text and turns it back into a command tree.
+ *
+ * The schema for `body` used to be `z.unknown()`, which emits a JSON Schema
+ * carrying no `type` at all. A client given nothing to go on may serialise the
+ * argument to a string; that string was then JSON-encoded a second time on the
+ * way out, so the router received a bare string, matched no command and
+ * answered `{}`. Shaped like success, a no-op in fact - the exact failure this
+ * server exists to prevent everywhere else.
+ *
+ * Decoding keeps those callers working. Anything that still is not a command
+ * tree afterwards is refused rather than sent.
+ */
+function decodeBody(body: RawBody): Decoded {
+  if (typeof body !== 'string') return { ok: true, body };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return {
+      ok: false,
+      message:
+        `The body is a string that is not JSON: ${body.slice(0, 60)}. Send the command as ` +
+        'JSON, for example {"show": {"version": {}}}.'
+    };
+  }
+
+  if (typeof parsed !== 'object' || parsed === null) {
+    return {
+      ok: false,
+      message:
+        `The body decoded to a ${typeof parsed}, not a command tree. Send an object such as ` +
+        '{"show": {"version": {}}}, or an array of them for a batch.'
+    };
+  }
+
+  return { ok: true, body: parsed };
+}
+
 export function registerRawTool(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
     'rci_call',
@@ -18,7 +62,15 @@ export function registerRawTool(server: McpServer, ctx: ToolContext): void {
           .string()
           .optional()
           .describe('Path after /rci/, for GET. Example: show/interface/Bridge0'),
-        body: z.unknown().optional().describe('Command object for POST, mirroring the CLI tree.'),
+        // Typed as a union rather than z.unknown() so the emitted schema tells a
+        // client what shape to send; see decodeBody for what the loose form cost.
+        body: z
+          .union([z.record(z.string(), z.unknown()), z.array(z.unknown()), z.string()])
+          .optional()
+          .describe(
+            'Command object for POST, mirroring the CLI tree, or an array of them for a ' +
+              'batch. Send JSON, not a stringified object.'
+          ),
         max_bytes: z
           .number()
           .int()
@@ -33,6 +85,8 @@ export function registerRawTool(server: McpServer, ctx: ToolContext): void {
         : { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
     },
     guard(async ({ method, path, body, max_bytes }): Promise<ToolResult> => {
+      let payload: unknown;
+
       if (method === 'GET') {
         if (path === undefined || path.length === 0) {
           return fail(new Error('GET needs a path, for example "show/version".'));
@@ -49,12 +103,13 @@ export function registerRawTool(server: McpServer, ctx: ToolContext): void {
         if (body === undefined) {
           return fail(new Error('POST needs a body, for example {"show": {"version": {}}}.'));
         }
+        const decoded = decodeBody(body);
+        if (!decoded.ok) return fail(new Error(decoded.message));
+        payload = decoded.body;
       }
 
       const result =
-        method === 'GET'
-          ? await ctx.client.rci.get(path as string)
-          : await ctx.client.rci.post(body);
+        method === 'GET' ? await ctx.client.rci.get(path as string) : await ctx.client.rci.post(payload);
 
       // max_bytes may only tighten the ceiling: a tool argument must not be able
       // to overrun the budget the operator configured with --max-response-bytes.

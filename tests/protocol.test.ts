@@ -75,6 +75,26 @@ describe('assembled server over MCP', () => {
     const payload = JSON.parse(content.map(part => part.text).join(''));
     expect(payload.model).toBe('Keenetic Model (KN-0000)');
   });
+
+  /**
+   * `z.unknown()` emits a property with no `type` and no `anyOf`. A client with
+   * nothing to go on may then serialise the argument to a string, and every
+   * POST silently became a no-op. The advertised schema has to describe the
+   * shape, so this asserts on the manifest rather than on the handler.
+   */
+  it('advertises a typed schema for the rci_call body', async () => {
+    const client = await connectedClient();
+    const { tools } = await client.listTools();
+    const body = (tools.find(t => t.name === 'rci_call')?.inputSchema.properties as
+      | Record<string, Record<string, unknown>>
+      | undefined)?.['body'];
+
+    expect(body, 'rci_call must advertise a body property').toBeDefined();
+    expect(
+      body!['type'] ?? body!['anyOf'] ?? body!['oneOf'],
+      'body must carry type information, or a client cannot tell what to send'
+    ).toBeDefined();
+  });
 });
 
 describe('read-only mode', () => {

